@@ -1,2 +1,2 @@
 # physics-in-ml
-Physics in machine learning written in Python.
+Physics informed machine learning written in Python.
