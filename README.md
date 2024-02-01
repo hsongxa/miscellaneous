@@ -1,2 +1,2 @@
 # ml-in-simulation
-Physics informed machine learning written in Python.
+Machine learning in simulation, PINN (Physics Informed Neural Networks), etc.
