@@ -1,4 +1,6 @@
-# ml-in-simulation
-Machine learning in simulation, PINN (Physics Informed Neural Networks), etc.
+# ldl
+Exercises from _Learning Deep Learning_.
 
-_Under construction..._
+# sls
+Solvers for sparse linear systems.
+
