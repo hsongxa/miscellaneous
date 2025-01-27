@@ -10,6 +10,9 @@
 // This class is an instance of the "backend" concept.
 // Another instance could be omp_backend, for example.
 //
+// TODO: Write the "backend" concept explicitly with the
+// TODO: C++20 concept construct.
+// 
 // TODO: Generalize member functions to function templates,
 // TODO: with parameters of value_type (double), matrix_type
 // TODO: (csr_matrix), vector_type (scalar_vector), ..., etc.
@@ -29,9 +32,13 @@ public:
 
 	static void finalize();
 
-	static void memcpy_from_frondend(const double* source, int n, double* target);
+	template<typename T>
+	static void memcpy_from_frondend(const T* source, int n, T* target)
+	{ cudaMemcpy(target, source, n * sizeof(T), cudaMemcpyHostToDevice); }
 
-	static void memcpy_to_frondend(const double* source, int n, double* target);
+	template<typename T>
+	static void memcpy_to_frondend(const double* source, int n, double* target)
+	{ cudaMemcpy(target, source, n * sizeof(double), cudaMemcpyDeviceToHost); }
 
 	static scalar_vector* create_vector(int n);
 
@@ -55,13 +62,13 @@ public:
 
 	// y = A * x
 	static void spmv(const csr_matrix& A, const scalar_vector& x, scalar_vector& y)
-	{ spmv(1.0, A, x, 1.0, y); }
+	{ spmv(1.0, A, x, 0.0, y); }
 
 	// y = a * A * x + b * y
 	static void spmv(double a, const csr_matrix& A, const scalar_vector& x, double b, scalar_vector& y);
 
 private:
-	static inline cusparseHandle_t s_cusparse_handle = nullptr;
+	static inline cusparseHandle_t s_cusparse_handle = nullptr;;
 };
 
 #endif

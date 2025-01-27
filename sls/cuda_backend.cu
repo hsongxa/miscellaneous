@@ -3,6 +3,7 @@
 #include "cuda_kernels.cuh"
 
 #include <thrust/inner_product.h>
+#include <thrust/device_ptr.h>
 
 #include <cassert>
 
@@ -18,16 +19,6 @@ void cuda_backend::finalize()
 {
 	assert(s_cusparse_handle != nullptr);
 	cusparseDestroy(s_cusparse_handle);
-}
-
-void cuda_backend::memcpy_from_frondend(const double* source, int n, double* target)
-{
-	cudaMemcpy(target, source, n * sizeof(double), cudaMemcpyHostToDevice);
-}
-
-void cuda_backend::memcpy_to_frondend(const double* source, int n, double* target)
-{
-	cudaMemcpy(target, source, n * sizeof(double), cudaMemcpyDeviceToHost);
 }
 
 scalar_vector* cuda_backend::create_vector(int n)
@@ -101,7 +92,9 @@ void cuda_backend::dot(const scalar_vector& x, const scalar_vector& y, double& r
 {
 	const double* src1 = x.values;
 	const double* src2 = y.values;
-	ret = thrust::inner_product(src1, src1 + x.n, src2, 0.0);
+	ret = thrust::inner_product(thrust::device_pointer_cast(src1),
+		                        thrust::device_pointer_cast(src1 + x.n),
+		                        thrust::device_pointer_cast(src2), 0.0);
 }
 
 void cuda_backend::spmv(double a, const csr_matrix& A, const scalar_vector& x, double b, scalar_vector& y)
@@ -119,14 +112,17 @@ void cuda_backend::spmv(double a, const csr_matrix& A, const scalar_vector& x, d
 	cusparseCreateDnVec(&vecY, y.n, y.values, CUDA_R_64F);
 
 	// allocate an external buffer if needed
-	cusparseSpMV_bufferSize(s_cusparse_handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                &a, matA, vecX, &b, vecY,
-		                CUDA_R_64F, CUSPARSE_SPMV_ALG_DEFAULT, &bufferSize);
+	cusparseSpMV_bufferSize(s_cusparse_handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &a, matA, vecX, &b, vecY,
+		                    CUDA_R_64F, CUSPARSE_SPMV_ALG_DEFAULT, &bufferSize);
 	cudaMalloc(&dBuffer, bufferSize);
+
+	// execute preprocess
+	//cusparseSpMV_preprocess(s_cusparse_handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &a, matA, vecX, &b, vecY,
+	//	                    CUDA_R_64F, CUSPARSE_SPMV_ALG_DEFAULT, dBuffer);
 
 	// execute SpMV
 	cusparseSpMV(s_cusparse_handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &a, matA, vecX, &b, vecY,
-		     CUDA_R_64F, CUSPARSE_SPMV_ALG_DEFAULT, dBuffer);
+		         CUDA_R_64F, CUSPARSE_SPMV_ALG_DEFAULT, dBuffer);
 
 	// destroy matrix/vector descriptors
 	cusparseDestroySpMat(matA);

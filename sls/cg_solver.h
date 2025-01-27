@@ -2,6 +2,7 @@
 #define CG_SOLVER_H
 
 #include <cmath>
+#include <tuple>
 
 template<typename BK>
 class cg_solver {
@@ -10,6 +11,10 @@ public:
 	using matrix_type = BK::matrix_type;
 
 	cg_solver() : Ap(nullptr), r(nullptr), p(nullptr) {}
+
+	// TODO: introduce solver configuration
+	int max_iters() const { return 100; }
+	double tolerance() const { return 1.0e-6; }
 
 	void set_up(const matrix_type& A) {
 		int new_n = A.n;
@@ -32,7 +37,7 @@ public:
 		}
 	}
 
-	void solve(const matrix_type& A, const vector_type& b, vector_type& x) {
+	std::tuple<bool, int> solve(const matrix_type& A, const vector_type& b, vector_type& x) {
 		BK::copy_vector(b, *r);
 
 		// r = b - Ax
@@ -44,7 +49,7 @@ public:
 
 		// save (r_old * r_old) and compute r_norm
 		double dot_old;
-		BK::dot(*r, *r, &dot_old);
+		BK::dot(*r, *r, dot_old);
 		double r_norm = std::sqrt(dot_old);
 
 		int k = 0;
@@ -54,7 +59,7 @@ public:
 
 			// alpha = (r_old * r_old)/(p * Ap)
 			BK::spmv(A, *p, *Ap);
-			BK::dot(*p, *Ap, &dot_new);
+			BK::dot(*p, *Ap, dot_new);
 			double alpha = dot_old / dot_new;
 
 			// x = x + alpha * p
@@ -63,7 +68,7 @@ public:
 			BK::axpy(-alpha, *Ap, *r);
 
 			// beta = (r * r)/(r_old * r_old)
-			BK::dot(*r, *r, &dot_new);
+			BK::dot(*r, *r, dot_new);
 			double beta = dot_new / dot_old;
 
 			// p = r + beta * p
@@ -74,6 +79,8 @@ public:
 			r_norm = std::sqrt(dot_old);
 			++k;
 		}
+
+		return std::make_tuple(true, k);
 	}
 
 	~cg_solver() {
@@ -86,10 +93,6 @@ private:
 	vector_type* Ap;
 	vector_type* r;
 	vector_type* p;
-
-	// TODO: introduce solver configuration
-	int max_iters() const { return 10000; }
-	double tolerance() const { return 1.0e-4; }
 };
 
 #endif
